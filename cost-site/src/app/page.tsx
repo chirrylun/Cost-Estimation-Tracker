@@ -1,101 +1,187 @@
-import Image from "next/image";
+import React, { useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { projectData, ProjectGroup, ProjectItem } from './data/projectData'
+import { Checkbox } from './components/Checkbox'
+import { Card, CardContent, CardHeader, CardTitle } from './components/Card'
+import { Accordion } from './components/Accordion'
+import { Tooltip } from './components/Tooltip'
+import { Progress } from './components/Progress'
+import { Button } from './components/Button'
+import { FaDollarSign, FaPercent } from 'react-icons/fa'
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount)
 }
+
+const ProjectEstimator: React.FC = () => {
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [viewMode, setViewMode] = useState<'list' | 'summary'>('list')
+
+  const toggleItem = (itemId: string) => {
+    setSelectedItems((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId)
+      } else {
+        newSet.add(itemId)
+      }
+      return newSet
+    })
+  }
+
+  const { groupTotals, grandTotal, maxGroupTotal } = useMemo(() => {
+    const groupTotals = projectData.reduce((acc, group) => {
+      acc[group.id] = group.items.reduce(
+        (sum, item) => (selectedItems.has(item.id) ? sum + item.cost : sum),
+        0
+      )
+      return acc
+    }, {} as Record<string, number>)
+
+    const grandTotal = Object.values(groupTotals).reduce((sum, groupTotal) => sum + groupTotal, 0)
+    const maxGroupTotal = Math.max(...Object.values(groupTotals))
+
+    return { groupTotals, grandTotal, maxGroupTotal }
+  }, [selectedItems])
+
+  return (
+    <div className="container mx-auto p-4 max-w-4xl">
+      <motion.h1
+        className="text-4xl font-bold mb-6 text-center text-blue-600"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        Project Cost Estimator
+      </motion.h1>
+      <motion.div
+        className="mb-6 flex justify-center space-x-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <Button
+          variant={viewMode === 'list' ? 'primary' : 'outline'}
+          onClick={() => setViewMode('list')}
+        >
+          List View
+        </Button>
+        <Button
+          variant={viewMode === 'summary' ? 'primary' : 'outline'}
+          onClick={() => setViewMode('summary')}
+        >
+          Summary View
+        </Button>
+      </motion.div>
+      <AnimatePresence mode="wait">
+        {viewMode === 'list' ? (
+          <motion.div
+            key="list"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Accordion
+              items={projectData.map((group) => ({
+                id: group.id,
+                title: (
+                  <div className="flex justify-between w-full pr-4">
+                    <span className="font-semibold">{group.name}</span>
+                    <span className="text-blue-600">{formatCurrency(groupTotals[group.id])}</span>
+                  </div>
+                ),
+                content: (
+                  <Card>
+                    <CardContent>
+                      {group.items.map((item) => (
+                        <motion.div
+                          key={item.id}
+                          className="flex items-center space-x-2 mb-2"
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <Checkbox
+                            id={item.id}
+                            checked={selectedItems.has(item.id)}
+                            onChange={() => toggleItem(item.id)}
+                          />
+                          <Tooltip content={item.description}>
+                            <label
+                              htmlFor={item.id}
+                              className={`flex-grow cursor-pointer ${
+                                selectedItems.has(item.id) ? 'text-blue-600' : 'text-gray-500'
+                              }`}
+                            >
+                              {item.name}
+                            </label>
+                          </Tooltip>
+                          <span
+                            className={`${
+                              selectedItems.has(item.id) ? 'text-blue-600' : 'text-gray-500'
+                            }`}
+                          >
+                            {formatCurrency(item.cost)}
+                          </span>
+                        </motion.div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ),
+              }))}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="summary"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Cost Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {projectData.map((group) => (
+                  <div key={group.id} className="mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold">{group.name}</span>
+                      <span className="text-blue-600">{formatCurrency(groupTotals[group.id])}</span>
+                    </div>
+                    <Progress
+                      value={groupTotals[group.id]}
+                      max={maxGroupTotal}
+                      className="h-2"
+                    />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <motion.div
+        className="mt-6 p-4 bg-blue-500 text-white rounded-lg shadow-lg"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
+        <div className="flex justify-between items-center">
+          <span className="text-2xl font-bold">Grand Total:</span>
+          <span className="text-3xl font-bold">{formatCurrency(grandTotal)}</span>
+        </div>
+        <div className="mt-2 flex items-center justify-end space-x-2">
+          <FaDollarSign className="h-5 w-5" />
+          <span>
+            {((grandTotal / 100000000) * 100).toFixed(2)}% of ₦100,000,000 budget
+          </span>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+export default ProjectEstimator
